@@ -1,11 +1,7 @@
-// packages/frontend/src/app/page.tsx
 import WalletConnector from '@/components/WalletConnector';
-// Import thêm các icon cần thiết nếu muốn dùng cho Info Cards
 import { FiSearch, FiGrid, FiList, FiSettings, FiShoppingCart, FiFeather, FiShield, FiLink2, FiHelpCircle } from 'react-icons/fi';
 import Image from 'next/image';
 
-// --- DỮ LIỆU MẪU VỚI 6 ẢNH CỦA BẠN ---
-// *** NHỚ SỬA ĐUÔI FILE (.jpg, .png, .webp...) CHO ĐÚNG VỚI FILE CỦA BẠN ***
 const mockFeaturedNFTs = [
   { id: 1, name: "NFT Số 1", artist: "Nghệ sĩ A", price: "1.15 ETH", imageUrl: "/images/nft1.jpg" },
   { id: 2, name: "NFT Số 2", artist: "Nghệ sĩ B", price: "3.25 ETH", imageUrl: "/images/nft2.jpg" },
@@ -17,11 +13,8 @@ const mockTrendingNFTs = [
   { id: 5, name: "NFT Số 5", artist: "Nghệ sĩ E", price: "0.05 ETH", imageUrl: "/images/nft5.jpg" },
   { id: 6, name: "NFT Số 6", artist: "Nghệ sĩ F", price: "0.12 ETH", imageUrl: "/images/nft6.jpg" },
 ];
-// --- KẾT THÚC DỮ LIỆU MẪU ---
 
-// --- COMPONENT NFT CARD (Không đổi) ---
 interface NftCardProps {
-  id: number;
   name: string;
   artist: string;
   price: string;
@@ -29,7 +22,7 @@ interface NftCardProps {
   large?: boolean;
 }
 
-const NftCard = ({ id, name, artist, price, imageUrl, large = false }: NftCardProps) => (
+const NftCard = ({ name, artist, price, imageUrl, large = false }: NftCardProps) => (
   <div className={`bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-lg hover:shadow-purple-500/40 transition-all duration-300 ease-in-out group ${large ? 'min-w-[300px] sm:min-w-[360px]' : ''}`}>
     <div className={`relative w-full ${large ? 'h-64 sm:h-72' : 'h-56'} group-hover:opacity-90 transition-opacity`}>
       <Image
@@ -54,12 +47,12 @@ const NftCard = ({ id, name, artist, price, imageUrl, large = false }: NftCardPr
   </div>
 );
 
-// --- COMPONENT INFO CARD ---
 interface InfoCardProps {
-  icon: React.ReactNode; // Cho phép truyền icon component
+  icon: React.ReactNode;
   title: string;
   description: string;
 }
+
 const InfoCard = ({ icon, title, description }: InfoCardProps) => (
     <div className="bg-gray-800/60 border border-gray-700 rounded-lg p-6 text-center flex flex-col items-center hover:bg-gray-700/80 transition-colors">
         <div className="text-4xl text-purple-400 mb-4">{icon}</div>
@@ -68,12 +61,9 @@ const InfoCard = ({ icon, title, description }: InfoCardProps) => (
     </div>
 );
 
-
-// --- COMPONENT HOME (ĐÃ THÊM 2 SECTION MỚI) ---
 export default function Home() {
   return (
     <div className="min-h-screen bg-black text-gray-100">
-      {/* Header (Giữ nguyên) */}
       <header className="bg-gray-900/80 backdrop-blur-lg text-white p-4 sticky top-0 z-50 border-b border-gray-700/50">
         <div className="container mx-auto flex items-center justify-between gap-4">
            <div className="flex items-center gap-6">
@@ -101,10 +91,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* --- SECTION TẠO NFT MỚI --- */}
       <section className="container mx-auto mt-10 mb-16 px-4">
           <div className="bg-gray-800/50 rounded-xl border border-gray-700/80 p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
-              {/* Cột trái: Text & Button */}
               <div className="flex-1 text-center md:text-left">
                   <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
                       Tạo bộ sưu tập NFT<br/> độc nhất vô nhị của bạn
@@ -116,11 +104,10 @@ export default function Home() {
                       Tạo ngay
                   </button>
               </div>
-              {/* Cột phải: Ảnh minh họa */}
               <div className="flex-1 flex justify-center md:justify-end">
                   <div className="relative w-64 h-80 sm:w-72 sm:h-96 rounded-lg overflow-hidden border-2 border-lime-400/50 shadow-2xl shadow-purple-500/30 transform -rotate-3 hover:rotate-0 transition-transform duration-300">
                        <Image
-                          src="/images/nft1.jpg" // Lấy 1 ảnh làm minh họa
+                           src="/images/nft1.jpg"
                           alt="Tạo NFT"
                           layout="fill"
                           objectFit="cover"
@@ -131,27 +118,21 @@ export default function Home() {
               </div>
           </div>
       </section>
-      {/* --- KẾT THÚC SECTION TẠO NFT --- */}
 
-
-      {/* Main Content Area */}
       <main className="container mx-auto px-4">
-
-        {/* Featured Section */}
         <section className="mb-12">
           <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-white">
-            Bộ sưu tập Nổi bật 🔥
+             Bộ sưu tập Nổi bật 🔥
           </h2>
           <div className="flex space-x-6 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
             {mockFeaturedNFTs.map((nft) => (
               <div key={`featured-${nft.id}`} className="flex-shrink-0 first:ml-0 last:mr-0">
-                 <NftCard {...nft} large={true} />
+                 <NftCard name={nft.name} artist={nft.artist} price={nft.price} imageUrl={nft.imageUrl} large={true} />
               </div>
             ))}
           </div>
         </section>
 
-        {/* Filter Bar Placeholder */}
         <section className="mb-8 p-3 bg-gray-800/50 rounded-lg flex items-center justify-between gap-4 overflow-x-auto">
            <div className='flex items-center gap-3'>
                <span className="text-sm font-medium text-gray-400">Mạng:</span>
@@ -163,7 +144,6 @@ export default function Home() {
            <button className="text-xs text-purple-400 hover:text-purple-300 whitespace-nowrap">Xem thêm</button>
         </section>
 
-        {/* Regular NFT Grid */}
         <section className="mb-16">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold text-white">
@@ -175,12 +155,11 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {mockTrendingNFTs.map((nft) => (
-              <NftCard key={nft.id} {...nft} />
+               <NftCard key={nft.id} name={nft.name} artist={nft.artist} price={nft.price} imageUrl={nft.imageUrl} />
             ))}
           </div>
         </section>
 
-        {/* --- SECTION THÔNG TIN/GIỚI THIỆU MỚI --- */}
         <section className="mb-16">
             <div className="flex justify-between items-center mb-6">
                  <h2 className="text-2xl font-semibold text-white">
@@ -213,11 +192,9 @@ export default function Home() {
                  />
             </div>
         </section>
-         {/* --- KẾT THÚC SECTION THÔNG TIN --- */}
 
       </main>
 
-      {/* Footer */}
       <footer className="bg-gray-900 p-6 mt-16 text-center text-sm text-gray-500 border-t border-gray-800">
         © {new Date().getFullYear()} ByNetfits NFT Commerce. Mọi quyền được bảo lưu.
       </footer>

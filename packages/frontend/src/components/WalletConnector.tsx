@@ -1,78 +1,100 @@
-// packages/frontend/src/components/WalletConnector.tsx
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ethers } from 'ethers';
+
+// Khai báo interface cho window.ethereum với kiểu 'unknown' thay cho 'any'
+interface EthereumRpc {
+    request: (args: { method: string; params?: Array<unknown>; }) => Promise<unknown>; // Thay any[] bằng unknown[], Promise<any> bằng Promise<unknown>
+    on: (eventName: string, listener: (...args: unknown[]) => void) => void; // Thay any[] bằng unknown[]
+    removeListener: (eventName: string, listener: (...args: unknown[]) => void) => void; // Thay any[] bằng unknown[]
+}
+
+declare global {
+  interface Window {
+    ethereum?: EthereumRpc;
+  }
+}
+
 
 function WalletConnector() {
   const [account, setAccount] = useState<string | null>(null);
-  // Không cần state provider nữa nếu chỉ dùng để lấy signer/account
-  // const [provider, setProvider] = useState<ethers.providers.Web3Provider | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
 
-  // Hàm xử lý khi tài khoản thay đổi (tách ra để tái sử dụng)
-  const handleAccountsChanged = useCallback((accounts: string[] | unknown) => {
-      // Đảm bảo accounts là một mảng string
+  const handleAccountsChanged = useCallback((accounts: unknown) => {
+      // Kiểm tra accounts là mảng và phần tử đầu tiên là string
       if (!Array.isArray(accounts)) {
           console.error("accountsChanged event did not return an array:", accounts);
-          setAccount(null); // Reset account nếu dữ liệu không đúng dạng
-          // Không nên set lỗi ở đây vì có thể chỉ là sự kiện lạ
+          setAccount(null);
           return;
       }
 
-      console.log("Handling accountsChanged:", accounts); // Log để debug
+      console.log("Handling accountsChanged:", accounts);
       if (accounts.length === 0) {
-          // Người dùng đã ngắt kết nối ví khỏi trang web
           setAccount(null);
           setErrorMessage("Ví đã ngắt kết nối. Vui lòng kết nối lại.");
-          // Không cần reload trang ở đây
-      } else if (accounts[0] !== account) {
-          // Tài khoản đã thay đổi hoặc kết nối thành công
+      } else if (typeof accounts[0] === 'string' && accounts[0] !== account) {
           setAccount(accounts[0]);
-          setErrorMessage(null); // Xóa lỗi nếu có
+          setErrorMessage(null);
           console.log('Account set:', accounts[0]);
+      } else if (typeof accounts[0] !== 'string'){
+           console.error("First account is not a string:", accounts[0]);
+           setAccount(null); // Reset nếu dữ liệu không đúng
       }
-      // Nếu accounts[0] === account, không làm gì cả
-  }, [account]); // Phụ thuộc vào account để so sánh
+  }, [account]);
 
-  // Hàm kết nối ví
   const connectWalletHandler = async () => {
-    if (isConnecting || account) return; // Không kết nối nếu đang xử lý hoặc đã kết nối
+    if (isConnecting || account) return;
 
     setErrorMessage(null);
     setIsConnecting(true);
 
-    if (typeof window.ethereum !== 'undefined') { // Kiểm tra window.ethereum rõ ràng hơn
+    if (typeof window.ethereum !== 'undefined') {
       try {
-        // Yêu cầu kết nối và lấy tài khoản
-        // phương thức này thường trả về mảng các tài khoản được phép
         const requestedAccounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-
-        // *** QUAN TRỌNG: Gọi handleAccountsChanged NGAY LẬP TỨC sau khi request thành công ***
+        // Sau khi request, kết quả trả về (requestedAccounts) nên được kiểm tra cẩn thận hơn
         if (requestedAccounts && Array.isArray(requestedAccounts)) {
              handleAccountsChanged(requestedAccounts);
         } else {
-             console.warn("eth_requestAccounts did not return an array:", requestedAccounts);
-             // Thử gọi eth_accounts để lấy lại lần nữa
+             console.warn("eth_requestAccounts did not return an array or was null/undefined:", requestedAccounts);
+             // Thử gọi eth_accounts một cách an toàn hơn
              const accounts = await window.ethereum.request({ method: 'eth_accounts' });
              if (accounts && Array.isArray(accounts)) {
                 handleAccountsChanged(accounts);
+             } else {
+                 console.error("eth_accounts also failed to return a valid array.");
+                 setErrorMessage("Không thể lấy được danh sách tài khoản từ ví.");
+                 setAccount(null);
              }
         }
+      } catch (error: unknown) {
+          console.error("Error connecting wallet:", error);
+          let message = "Đã xảy ra lỗi khi kết nối ví.";
+          let code: number | string | null = null; // Cho phép code là number hoặc string
 
-        // Không cần set provider vào state nữa trừ khi cần dùng provider ở chỗ khác
-        // const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
-        // setProvider(web3Provider);
+          if (typeof error === 'object' && error !== null) {
+            // Kiểm tra các thuộc tính một cách an toàn
+            if ('code' in error) {
+                const potentialCode = (error as { code?: unknown }).code;
+                if(typeof potentialCode === 'number' || typeof potentialCode === 'string') {
+                    code = potentialCode;
+                }
+            }
+            if ('message' in error && typeof (error as { message?: unknown }).message === 'string') {
+              message = (error as { message: string }).message;
+            }
+          }
 
-      } catch (error: any) {
-        console.error("Error connecting wallet:", error);
-        if (error.code === 4001) { // User rejected request
-          setErrorMessage("Bạn đã từ chối kết nối ví.");
-        } else {
-          setErrorMessage(error.message || "Đã xảy ra lỗi khi kết nối ví.");
-        }
-        setAccount(null);
+          if (code === 4001) { // MetaMask user rejection code
+            setErrorMessage("Bạn đã từ chối kết nối ví.");
+          } else if (code === -32002) { // Request already pending
+            setErrorMessage("Yêu cầu kết nối ví đã được gửi, vui lòng kiểm tra ví của bạn.");
+            // Không reset account trong trường hợp này
+          }
+          else {
+            setErrorMessage(message);
+            setAccount(null); // Chỉ reset account nếu lỗi không phải là pending hoặc từ chối
+          }
       } finally {
         setIsConnecting(false);
       }
@@ -82,36 +104,43 @@ function WalletConnector() {
     }
   };
 
-  // Hàm xử lý khi đổi chain/mạng
   const handleChainChanged = useCallback(() => {
       console.log("Network changed, reloading page...");
-      window.location.reload(); // Cách đơn giản nhất để xử lý đổi mạng
+      window.location.reload();
   }, []);
 
-  // useEffect để xử lý listener và kiểm tra kết nối ban đầu
   useEffect(() => {
     if (typeof window.ethereum !== 'undefined') {
-      // Lắng nghe sự kiện accountsChanged
       window.ethereum.on('accountsChanged', handleAccountsChanged);
-      // Lắng nghe sự kiện chainChanged
       window.ethereum.on('chainChanged', handleChainChanged);
 
-      // Kiểm tra kết nối có sẵn khi tải trang
       const checkExistingConnection = async () => {
+        if (typeof window.ethereum === 'undefined') {
+            console.log("Ethereum provider disappeared before check?");
+            return;
+        }
         try {
-          // Không set isConnecting ở đây để tránh nhấp nháy nút
+          // Kết quả trả về từ eth_accounts là string[] hoặc có thể là lỗi
           const accounts = await window.ethereum.request({ method: 'eth_accounts' });
           if (accounts && Array.isArray(accounts) && accounts.length > 0) {
             console.log("Found existing connection:", accounts);
-            handleAccountsChanged(accounts); // Cập nhật UI nếu đã có kết nối
+            handleAccountsChanged(accounts); // accounts ở đây chắc chắn là string[] nếu check thành công
           } else {
-            console.log("No existing connection found.");
+            console.log("No existing connection found or accounts array is empty.");
+            // Không cần set lỗi ở đây, chỉ đơn giản là chưa kết nối
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
            console.error("Error checking existing connection:", err);
-           // Chỉ hiển thị lỗi nếu nó không phải là lỗi do người dùng chưa kết nối
-           if (err.code !== -32002) { // -32002: Request already pending
-               setErrorMessage("Không thể kiểm tra trạng thái ví.");
+           let code: number | string | null = null;
+           if (typeof err === 'object' && err !== null && 'code' in err) {
+               const potentialCode = (err as { code?: unknown }).code;
+               if(typeof potentialCode === 'number' || typeof potentialCode === 'string') {
+                   code = potentialCode;
+               }
+           }
+           // Chỉ hiển thị lỗi nếu nó không phải là lỗi Request Pending
+           if (code !== -32002) {
+               setErrorMessage("Không thể kiểm tra trạng thái ví ban đầu.");
            }
         }
       };
@@ -119,16 +148,14 @@ function WalletConnector() {
 
       // Cleanup listeners khi component unmount
       return () => {
-        if (window.ethereum.removeListener) { // Kiểm tra xem removeListener có tồn tại không
+        if (window.ethereum?.removeListener) {
           window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
           window.ethereum.removeListener('chainChanged', handleChainChanged);
         }
       };
     } else {
-        // Có thể hiển thị thông báo nhẹ nhàng ở đây nếu muốn
         console.log("Ethereum provider (wallet) not detected on initial load.");
     }
-    // Chỉ chạy một lần khi component mount, và re-run nếu hàm handleAccountsChanged hoặc handleChainChanged thay đổi (do useCallback)
   }, [handleAccountsChanged, handleChainChanged]);
 
   return (
@@ -151,7 +178,8 @@ function WalletConnector() {
         </button>
       )}
       {errorMessage && (
-          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-max max-w-xs z-10">
+          // Thêm key để React re-render khi errorMessage thay đổi, giúp animation hoạt động (nếu có)
+          <div key={errorMessage} className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-max max-w-xs z-10">
               <p className="text-xs text-red-400 bg-gray-800/90 px-3 py-1.5 rounded shadow-lg backdrop-blur-sm">
                   {errorMessage}
               </p>
